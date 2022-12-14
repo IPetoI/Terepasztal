@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset=utf-8>
+    <link rel="icon" href="textures/ikon.png">
+    <title>Vasútállomás</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+        }
+        canvas { 
+            width: 100%; 
+            height: 100% 
+        }
+
+        #settings_panel {
+            position: absolute;
+            display: block;
+            top: 36px;
+            right: 0;
+            width: 128px;
+            height: 190px;
+            background-color:rgba(0,0,0,0.5);
+        }
+
+        #jobb {
+            font-family: 'Nunito', sans-serif;
+            color: #ffffff;
+            position: absolute ;
+            left: 0%;
+            top: -21px;
+        }
+
+        #container p {
+            background-color:rgba(0,0,0,0.7);
+            padding: 8px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div id="container">
+        <p id="jobb">W - vonat előre megy &nbsp;&nbsp;&nbsp;&nbsp; A - vonat balra megy  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    Q - vonat balra fordul<br>&nbsp;S - vonat hátra megy &nbsp;&nbsp;&nbsp;&nbsp; 
+                    D - vonat jobbra megy &nbsp;&nbsp;&nbsp;&nbsp; E - vonat jobbra fordul</p>
+</div>
+<div id="settings_panel">
+    <p style="padding-left: 16px; color: ghostwhite">Napszak</p>
+    <button id="nappal" style="width: 60%; margin-left: 24px; background-color: #f1f1f1">Nappal</button>
+    <br>
+    <button id="ejjel" style="width: 60%; margin-left: 24px; background-color: #8e8e8e">Éjjel</button>
+    <br>
+    <p style="padding-left: 16px; color: ghostwhite">Lámpák</p>
+    <button id="fenyb" style="width: 60%; margin-left: 24px; background-color: #8e8e8e">Be / Ki</button>
+
+</div>
+
+<script type="module">
+
+    // Import ---------------------------------------------------------------------------------------------------------------------
+
+    import * as THREE from "./js-r132/build/three.module.js"
+    import { OrbitControls } from './js-r132/examples/jsm/controls/OrbitControls.js';
+    import { OBJLoader } from "./js-r132/examples/jsm/loaders/OBJLoader.js";
+    import { GUI } from './js-r132/examples/jsm/libs/dat.gui.module.js';
+    import { MTLLoader } from './js-r132/examples/jsm/loaders/MTLLoader.js';
+
+    // Változók -------------------------------------------------------------------------------------------------------------------
+    var SZELESSEG, HOSSZUSAG, aspectRatio;
+    var renderer;
+    var scene, Kamera;
+    var Iranyitas;
+    var teglatest, teglatest0, fal, mesht, mesht0;
+    var teglatest4, mesht4;
+    var teglatest3, mesht3;
+    var teglatest1, mesht1;
+    var teglatest2, mesht2;
+    var teglatest5, teglatestk5, mesht5;
+    var teglatest6, teglatestk6, mesht6;
+    var kup, teto, meshk;
+    var kup4, meshk4;
+    var kup3, meshk3;
+    var kup1, meshk1;
+    var kup2, meshk2;
+    var kup5, fekete, meshk5;
+    var ambientfeny, dfeny ,pfeny, pfeny2;
+    var terepasztal, vonat;
+    var panelCtrl;
+    var gui;
+
+
+    var PanelController = function () {
+        this.vagonok = true;
+    };
+
+    loader();
+    //init();
+    //animate();
+
+
+    // Gui -------------------------------------------------------------------------------------------------------------------------
+
+
+    function placeControlGui( gui ) {
+        gui.domElement.style.position = 'absolute';
+        gui.domElement.style.top = '0px';
+        gui.domElement.style.right = '0px';
+        gui.domElement.style.zIndex = 120;
+        document.body.appendChild( gui.domElement );
+    }
+
+    function addControlGui( controlObject ) {
+        gui = new GUI( { autoPlace: false } );
+        gui.add( controlObject, 'vagonok' ).name('Vagon fel-alá');
+
+        placeControlGui( gui );
+    }
+
+    // Blender betöltés ------------------------------------------------------------------------------------------------------------
+
+
+
+    function loader() {
+        const OBJFile = 'Blender/Terepasztal.obj';
+        const MTLFile = 'Blender/Terepasztal.mtl';
+
+        new MTLLoader()
+            .load(MTLFile, function (materials) {
+                materials.preload();
+                new OBJLoader()
+                    .setMaterials(materials)
+                    .load(OBJFile, function (object) {
+                        terepasztal = object;
+                        // console.log(object);
+
+                        object.traverse(function (child) {
+                            if (child instanceof THREE.Mesh) {
+                                child.scale.set(0.7,0.7,0.7);
+                                child.receiveShadow = true;
+                                child.castShadow = true;
+                            }
+                        });
+
+                        loader2();
+                    });
+            });
+    }
+
+    function loader2() {
+        const OBJFile = 'Blender/vagon.obj';
+        const MTLFile = 'Blender/vagon.mtl';
+
+        new MTLLoader()
+            .load(MTLFile, function (materials) {
+                materials.preload();
+                new OBJLoader()
+                    .setMaterials(materials)
+                    .load(OBJFile, function (object) {
+                        vonat = object;
+                        // console.log(object);
+
+                        object.traverse(function (child) {
+                            if (child instanceof THREE.Mesh) {
+                                child.scale.set(0.1,0.1,0.1);
+                                child.receiveShadow = true;
+                                child.castShadow = true;
+                            }
+                        });
+
+                        init();
+                    });
+            });
+    }
+
+
+
+    function init() {
+
+        // Alapok ------------------------------------------------------------------------------------------------------------------
+
+        HOSSZUSAG = window.innerHeight;
+        SZELESSEG = window.innerWidth;
+        aspectRatio = SZELESSEG / HOSSZUSAG;
+
+        renderer = new THREE.WebGLRenderer( { antialias: true } );
+        renderer.setSize( SZELESSEG, HOSSZUSAG );
+        renderer.setClearColor( 0x202020);
+        document.body.appendChild( renderer.domElement );
+        renderer.shadowMap.enabled = true;
+
+        scene = new THREE.Scene();
+
+        // 360 --------------------------------------------------------------------------------------------------------------------
+        
+        let envLoader = new THREE.CubeTextureLoader();
+        scene.background = envLoader.load(['cubemap/px.jpg', 'cubemap/nx.jpg', 'cubemap/py.jpg', 'cubemap/ny.jpg',
+             'cubemap/pz.jpg', 'cubemap/nz.jpg']);
+
+
+        //  -----------------------------------------------------------------------------------------------------------------------
+        
+        Kamera = new THREE.PerspectiveCamera( 80, aspectRatio, 0.1, 300 );
+        Kamera.position.z = 40;
+        Kamera.position.y = 70;
+        Kamera.position.x = 65;
+
+
+        Iranyitas = new OrbitControls( Kamera, renderer.domElement );
+        Iranyitas.rotateSpeed = 1.0;
+        Iranyitas.panSpeed = 8.0;
+        Iranyitas.minDistance = 20;
+        Iranyitas.maxDistance = 100;
+        Iranyitas.maxPolarAngle = Math.PI / 2;
+        Iranyitas.target.set(0, 40, 0);
+
+        // Blender ----------------------------------------------------------------------------------------------------------------
+
+        terepasztal.rotation.y = -1.0 * THREE.MathUtils.degToRad( 90 );
+
+        vonat.rotation.y = -1.0 * THREE.MathUtils.degToRad( -98 );
+        vonat.position.y=34.45;
+        vonat.position.z=-26;
+        vonat.position.x= 20;
+
+        // THREE.js  ---------------------------------------------------------------------------------------------------------------
+
+        teglatest = new THREE.BoxGeometry( 4, 2, 4,1,1,1);
+        fal = new THREE.MeshPhongMaterial( { color: 0x7e7e7e, wireframe: false } );
+        mesht = new THREE.Mesh( teglatest, fal );
+        mesht.position.set( 20, 35 , -30 );
+        mesht.castShadow = true;
+        mesht.receiveShadow = true;
+
+        teglatest0 = new THREE.BoxGeometry( 0.1, 0.1, 0.1,1,1,1);
+        mesht0 = new THREE.Mesh( teglatest1, fal );
+
+        teglatest4 = new THREE.BoxGeometry( 1, 4, 1,1,1,1);
+        mesht4 = new THREE.Mesh( teglatest4, fal );
+        mesht4.position.set(18, 36 , -32.5);
+        mesht4.castShadow = true;
+        mesht4.receiveShadow = true;
+
+        teglatest3 = new THREE.BoxGeometry( 1, 4, 1,1,1,1);
+        mesht3 = new THREE.Mesh( teglatest3, fal );
+        mesht3.position.set( 22, 36 , -32.5 );
+        mesht3.castShadow = true;
+        mesht3.receiveShadow = true;
+
+        teglatest1 = new THREE.BoxGeometry( 2, 2, 3,1,1,1);
+        mesht1 = new THREE.Mesh( teglatest1, fal);
+        mesht1.position.set( 23, 35 , -30.5 );
+        mesht1.castShadow = true;
+        mesht1.receiveShadow = true;
+
+        teglatest2 = new THREE.BoxGeometry( 2, 2,3,1,1,1);
+        mesht2 = new THREE.Mesh( teglatest2, fal);
+        mesht2.position.set( 17, 35 , -30.5 );
+        mesht2.castShadow = true;
+        mesht2.receiveShadow = true;
+
+        kup = new THREE.ConeGeometry( 3, 1, 4,20);
+        teto = new THREE.MeshPhongMaterial( { color: 0x700000, wireframe: false,
+              shininess: 80, specular: 0x111111, side: THREE.FrontSide } );
+        meshk = new THREE.Mesh( kup, teto );
+        meshk.position.set( 20, 36.5 , -30 );
+        meshk.rotation.y = -1.0 * THREE.MathUtils.degToRad( 45 );
+        meshk.castShadow = true;
+        meshk.receiveShadow = true;
+
+        kup4 = new THREE.ConeGeometry( 1, 0.5, 4,20);
+        meshk4 = new THREE.Mesh( kup4, teto );
+        meshk4.position.set( 18, 38.25 , -32.5 );
+        meshk4.rotation.y = -1.0 * THREE.MathUtils.degToRad( 45 );
+        meshk4.castShadow = true;
+        meshk4.receiveShadow = true;
+
+        kup3 = new THREE.ConeGeometry( 1, 0.5, 4,20);
+        meshk3 = new THREE.Mesh( kup3, teto );
+        meshk3.position.set( 22, 38.25 , -32.5 );
+        meshk3.rotation.y = -1.0 * THREE.MathUtils.degToRad( 45 );
+        meshk3.castShadow = true;
+        meshk3.receiveShadow = true;
+
+        kup1 = new THREE.ConeGeometry( 1.5, 1, 4,20);
+        meshk1 = new THREE.Mesh( kup1, teto );
+        meshk1.position.set( 23, 36.5 , -30.5 );
+        meshk1.scale.set(1.1,1,2.4);
+        meshk1.castShadow = true;
+        meshk1.receiveShadow = true;
+
+        kup2 = new THREE.ConeGeometry( 1.5, 1, 4,20);
+        meshk2 = new THREE.Mesh( kup2, teto );
+        meshk2.position.set( 17, 36.5 , -30.5 );
+        meshk2.scale.set(1.1,1,2.4);
+        meshk2.castShadow = true;
+        meshk2.receiveShadow = true;
+
+        kup5 = new THREE.ConeGeometry( 0.4, 0.3, 4,50,50,true,2.5,4);
+        fekete = new THREE.MeshPhongMaterial( { color: 0x000000, wireframe: true } );
+        meshk5 = new THREE.Mesh( kup5, fekete );
+        meshk5.position.set( 20, 37.1 , -30 );
+        meshk5.scale.set(1.4,1,1.4);
+        meshk5.rotation.y = -1.0 * THREE.MathUtils.degToRad( -135 );
+        meshk5.rotation.z = -1.0 * THREE.MathUtils.degToRad( 180 );
+        meshk5.castShadow = true;
+        meshk5.receiveShadow = true;
+
+
+        var textureLoader = new THREE.TextureLoader();
+        var texture = textureLoader.load( 'textures/doboz.png' );
+
+        var texture2 = textureLoader.load( 'textures/doboz2.jpg' );
+
+        teglatest5 = new THREE.BoxGeometry( 1, 1, 1,1,1,1);
+        teglatestk5 = new THREE.MeshPhongMaterial();
+        mesht5 = new THREE.Mesh( teglatest5, teglatestk5 );
+        mesht5.position.set(14, 35 , -30 );
+        teglatestk5.map = texture;
+        mesht5.castShadow = true;
+        mesht5.receiveShadow = true;
+
+        teglatest6 = new THREE.BoxGeometry( 1, 1, 1,1,1,1);
+        teglatestk6 = new THREE.MeshPhongMaterial();
+        mesht6 = new THREE.Mesh( teglatest6, teglatestk6 );
+        mesht6.position.set(14, 35 , -31.1 );
+        teglatestk6.map = texture2;
+        mesht6.castShadow = true;
+        mesht6.receiveShadow = true;
+
+        // Fények  ----------------------------------------------------------------------------------------------------------------
+        
+        ambientfeny = new THREE.AmbientLight(0xffffff,0.8);
+
+        dfeny = new THREE.DirectionalLight(0xccccccc, 0.05);
+        dfeny.castShadow = true;
+        dfeny.position.set( 3, 6, 120 );
+
+     //   let dfenyh = new THREE.DirectionalLightHelper(dfeny, 1, 0xffffff);
+
+
+        pfeny = new THREE.PointLight(0xf0ff9e, 1, 15);
+        pfeny.position.set( 9.4, 37.5 , -29.1 );
+        pfeny.castShadow= true;
+
+        pfeny2 = new THREE.PointLight(0xf0ff9e, 1, 15);
+        pfeny2.position.set( 11.6, 37.5 , -21.8 );
+        pfeny2.castShadow= true;
+        
+        
+        var pfenyh = new THREE.PointLightHelper(pfeny2, 1, 0xffffff);
+        
+        
+        // let sfeny = new THREE.SpotLight(0xf0ff9e, 0.3, 10, 160);
+        // sfeny.position.set( 6, 1, 5 );
+        // sfeny.shadow.mapSize.width = 1024;
+        // sfeny.shadow.mapSize.height = 1024;
+        // sfeny.castShadow = true;
+        
+        // let sfeny2 = new THREE.SpotLight(0xff0000, 0.3, 4, 160);
+        // sfeny2.shadow.mapSize.width = 1024;
+        // sfeny2.shadow.mapSize.height = 1024;
+        // sfeny2.castShadow = true;
+        
+        // let sfenyh = new THREE.SpotLightHelper(sfeny, 1, 0xffffff);
+
+        // Scene.add ------------------------------------------------------------------------------------------------------------
+
+        scene.add( mesht0 );
+        scene.add( mesht );
+        scene.add( mesht4 );
+        scene.add( mesht3 );
+        scene.add( mesht1 );
+        scene.add( mesht2 );
+        scene.add( meshk );
+        scene.add( meshk4 );
+        scene.add( mesht5 );
+        scene.add( mesht6 );
+        scene.add( meshk3 );
+        scene.add( meshk1 );
+        scene.add( meshk2 );
+        scene.add( meshk5 );
+        scene.add(ambientfeny);
+        scene.add(dfeny);
+        // scene.add(dfenyh);
+        // scene.add(sfeny);
+        // scene.add(sfenyh);
+        // scene.add(pfenyh);
+        scene.add(terepasztal);
+        scene.add(vonat);
+
+        document.addEventListener("keydown", onDocumentKeyDown, false);
+        function onDocumentKeyDown(event) {
+            var keyCode = event.which;
+            if (keyCode == 68 && vonat.position.z<11 ) {  // d
+                vonat.position.z += 1;
+                console.log(vonat.position.z);
+            } else if (keyCode == 65 && vonat.position.z>-27) {  // a
+                vonat.position.z -= 1;
+                console.log(vonat.position.z);
+            } else if (keyCode == 87 && vonat.position.x<35) {  // w
+                vonat.position.x += 1;
+                console.log(vonat.position.x);
+            } else if (keyCode == 83 && vonat.position.x>-35) {  // s
+                vonat.position.x -= 1;
+                console.log(vonat.position.x);
+            } else if (keyCode == 69 ) {                                        // e
+                vonat.rotation.y += THREE.MathUtils.degToRad( -10 );
+                console.log(vonat.position.x);
+            } else if (keyCode == 81 ) {                                        // q
+                vonat.rotation.y += THREE.MathUtils.degToRad( +10 );
+                console.log(vonat.position.x);
+            }
+        }
+
+        // sfeny2.position.set( 0, 0, 0 );
+        // Kamera.add( sfeny2 );
+        // scene.add( Kamera );
+
+        window.addEventListener( 'resize', handleWindowResize, false );
+
+        panelCtrl = new PanelController();
+        addControlGui( panelCtrl );
+        //render();
+        animate();
+    }
+
+
+    function handleWindowResize() {
+        HOSSZUSAG = window.innerHeight;
+        SZELESSEG = window.innerWidth;
+        console.log( 'SZELESSEG=' + SZELESSEG + '; HOSSZUSAG=' + HOSSZUSAG );
+        renderer.setSize( SZELESSEG, HOSSZUSAG );
+        aspectRatio = SZELESSEG / HOSSZUSAG;
+        Kamera.aspect = aspectRatio;
+        Kamera.updateProjectionMatrix();
+
+        render();
+    }
+
+
+    var meretezes = 0;
+    var igaz=0;
+
+    function animate() {
+
+        document.getElementById('nappal').onclick = nappal => {
+
+            document.getElementById("nappal").style.backgroundColor = "#f1f1f1";
+            document.getElementById("ejjel").style.backgroundColor = "#8e8e8e";
+            document.getElementById("ejjel").style.color = "#000000";
+            ambientfeny.intensity = 0.8;
+            dfeny.intensity= 0.05;
+
+                let envLoader = new THREE.CubeTextureLoader();
+                scene.background = envLoader.load(['cubemap/px.jpg', 'cubemap/nx.jpg',
+                     'cubemap/py.jpg', 'cubemap/ny.jpg', 'cubemap/pz.jpg', 'cubemap/nz.jpg']);
+
+
+        };
+        document.getElementById('ejjel').onclick = éjjel => {
+
+            document.getElementById("ejjel").style.backgroundColor = "#1f1f1f";
+            document.getElementById("ejjel").style.color = "#8e8e8e";
+            document.getElementById("nappal").style.backgroundColor = "#8e8e8e";
+            ambientfeny.intensity = 0.4;
+            dfeny.intensity = 0;
+
+                let envLoader2 = new THREE.CubeTextureLoader();
+                scene.background = envLoader2.load(['cubemap/px.png', 'cubemap/nx.png',
+                     'cubemap/py.png', 'cubemap/ny.png', 'cubemap/pz.png', 'cubemap/nz.png']);
+
+        };
+
+        document.getElementById('fenyb').onclick = fenybe => {
+            
+            if (igaz==0) {
+                scene.add(pfeny);
+                scene.add(pfeny2);
+                document.getElementById("fenyb").style.backgroundColor = "#cccccc";
+                igaz=1;
+            } else if (igaz==1) {
+                scene.remove(pfeny);
+                scene.remove(pfeny2);
+                document.getElementById("fenyb").style.backgroundColor = "#8e8e8e";
+                igaz=0;
+            }
+        };
+
+        if( panelCtrl.vagonok ) { // sebessége
+            meretezes+=0.01; 
+            vonat.position.x = Math.sin(meretezes) * 9; 
+        }
+
+
+        requestAnimationFrame( animate );
+        Iranyitas.update();
+        render();
+    }
+
+    function render() {
+        renderer.render(scene, Kamera);
+    }
+
+
+</script>
+</body>
+</html>

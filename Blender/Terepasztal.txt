@@ -1,0 +1,20 @@
+Domborzat:
+Landscape használatával alkottam meg a dobot, hegyet és szakadékot.
+
+Fák:
+A fák 1 hengerből és 1 gömbből állnak, amiket nyújtottam és átméreteztem.
+Majd ezeket szétszortam és kicsit eldöntöttem őket.
+
+Híd:
+1 Kockát széthúztam és az oldalait felhúztam majd G gomb után kicsit megemeltem a közepét.
+
+Sín:
+
+Létrehoztam a vas elemet 1 kockából amit másolással átraktam a túl oldalra.
+Majd létrehoztam 1 másik kockát ami alá került és szintén lemásoltam 2.
+Az így kapott sín darabot Curve és Array használatával alakítottam a jelenlegi állapotára.
+1 kör vonalat illesztettem hozzá és arra fektettem rá a sín-t.
+
+Lámpák:
+A lámpák 1 hengerből és 1 kúpból állnak, amiket nyújtottam és átméreteztem.
+Majd ezeket szétszortam a sín mentén.

@@ -1,0 +1,17 @@
+Ebben találhatók a vaagonok és a vonat.
+
+Vagon:
+
+1. Kockából inset face és extrude használatával a vagon fő részét alakítottam ki.
+2. Torus-t forgattam és helyeztem át a kockához kampó hatást keltve ezzel.
+3. Henger oldalán minden második face-t extrudáltam kifelé.
+4. 1 új hengernek inset-eltem a 2 oldalsó lapját majd középső face-t kitöröltem.
+5. A 3. és 4. Lépést összerakva megkaptam a kereket amit a helyére raktam a 3 másolatával együtt.
+6. Így kész lett a vagon amit még lemásoltam 2x.
+
+Vonat:
+
+1. Kockából inset face és extrude használatával alakítottam ki az egészet.
+
+
+Majd textúráztam.
